@@ -187,7 +187,9 @@ body {
 }
 
 .codex-composer textarea,
-.codex-sidebar input {
+.codex-sidebar input,
+.codex-sidebar select,
+.codex-sidebar textarea {
     width: 100%;
     border-radius: 0.7rem;
     border: 1px solid var(--codex-border);
@@ -198,7 +200,9 @@ body {
 }
 
 .codex-composer textarea:focus,
-.codex-sidebar input:focus {
+.codex-sidebar input:focus,
+.codex-sidebar select:focus,
+.codex-sidebar textarea:focus {
     outline: none;
     border-color: color-mix(in srgb, var(--codex-accent) 70%, white 30%);
     box-shadow: 0 0 0 3px rgba(88, 211, 255, 0.18);
@@ -234,17 +238,63 @@ body {
     background: rgba(255, 255, 255, 0.05);
 }
 
+.codex-btn-chip {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    padding: 0.45rem 0.6rem;
+    background: rgba(255, 255, 255, 0.04);
+}
+
 .codex-sidebar {
     display: grid;
     gap: 0.9rem;
     align-content: start;
 }
 
-.codex-toggle {
+.codex-card {
+    border: 1px solid var(--codex-border);
+    border-radius: 0.8rem;
+    background: rgba(255, 255, 255, 0.02);
+    padding: 0.75rem;
+    display: grid;
+    gap: 0.55rem;
+}
+
+.codex-card h2 {
+    margin: 0;
+    font-size: 0.88rem;
+    font-family: var(--font-mono);
+}
+
+.codex-card-head {
     display: flex;
+    justify-content: space-between;
     align-items: center;
+    gap: 0.4rem;
+}
+
+.codex-hint {
+    margin: 0;
+    font-size: 0.76rem;
+    color: color-mix(in srgb, var(--codex-ink) 72%, white 28%);
+    line-height: 1.35;
+}
+
+.codex-hint code {
+    font-family: var(--font-mono);
+}
+
+.codex-toggle {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: start;
     gap: 0.55rem;
     font-size: 0.9rem;
+    line-height: 1.35;
+}
+
+.codex-toggle input[type='checkbox'] {
+    margin-top: 0.15rem;
 }
 
 .codex-toggle code {

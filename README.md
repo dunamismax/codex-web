@@ -55,7 +55,7 @@ Optional local seed data:
 ### App Screenshot
 
 <p align="center">
-  <img src="public/Codex-Web%20Screenshot.png" alt="Codex Web application screenshot" width="1200" />
+  <img src="public/Codex-Web%20Screenshot%20v2.png" alt="Codex Web application screenshot" width="1200" />
 </p>
 
 ## Features
@@ -63,7 +63,8 @@ Optional local seed data:
 - Live chat-style Codex console at `/` with prompt composer, stream controls, and transcript view.
 - Real-time SSE stream endpoint at `POST /codex/stream` using `response()->eventStream(...)`.
 - Codex thread continuity via `thread.started` handling and `session_id` resume support.
-- Configurable runtime options per prompt: working directory, model override, and `--full-auto` toggle.
+- Configurable runtime options per prompt: working directory, Codex model + reasoning effort, sandbox/approval policies, web search, and additional writable directories.
+- Slash-command-style quick actions in the UI for status, session reset, transcript clearing, and fast access to model/permission controls.
 - Workspace safety checks that reject `cwd` values outside `CODEX_WORKSPACE_ROOT`.
 - Structured stream error handling that emits SSE error events and a deterministic stream completion event.
 

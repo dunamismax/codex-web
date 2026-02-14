@@ -3,9 +3,19 @@
     x-data="codexConsole({
         streamUrl: @js($streamUrl),
         csrfToken: @js(csrf_token()),
+        workspaceRoot: @js($workspaceRoot),
+        cwdSuggestions: @js($cwdSuggestions),
         defaultCwd: @js($defaultCwd),
         defaultModel: @js($defaultModel),
+        defaultReasoningEffort: @js($defaultReasoningEffort),
         defaultFullAuto: @js($defaultFullAuto),
+        defaultSandboxMode: @js($defaultSandboxMode),
+        defaultApprovalPolicy: @js($defaultApprovalPolicy),
+        defaultWebSearch: @js($defaultWebSearch),
+        modelOptions: @js($models),
+        reasoningOptions: @js($reasoningEfforts),
+        sandboxOptions: @js($sandboxModes),
+        approvalOptions: @js($approvalPolicies),
     })"
     x-init="init()"
     class="codex-shell"
@@ -66,20 +76,81 @@
                 </section>
 
                 <aside class="codex-panel codex-sidebar">
-                    <div>
+                    <section class="codex-card">
+                        <div class="codex-card-head">
+                            <h2>Workspace</h2>
+                            <button type="button" class="codex-btn codex-btn-chip" @click="cwd = workspaceRoot" :disabled="isStreaming">
+                                Root
+                            </button>
+                        </div>
+
                         <label class="codex-label" for="cwd">Working directory</label>
-                        <input id="cwd" x-model="cwd" type="text" autocomplete="off">
-                    </div>
+                        <input id="cwd" x-model="cwd" type="text" autocomplete="off" list="cwd-options">
+                        <datalist id="cwd-options">
+                            <template x-for="path in cwdSuggestions" :key="path">
+                                <option :value="path"></option>
+                            </template>
+                        </datalist>
 
-                    <div>
-                        <label class="codex-label" for="model">Model (optional)</label>
-                        <input id="model" x-model="model" type="text" autocomplete="off" placeholder="o3">
-                    </div>
+                        <label class="codex-label" for="addDirs">Additional writable directories</label>
+                        <textarea
+                            id="addDirs"
+                            x-model="additionalDirsText"
+                            rows="3"
+                            placeholder="One path per line"
+                        ></textarea>
+                        <p class="codex-hint">Maps to <code>--add-dir</code>. Paths must be inside your workspace root.</p>
+                    </section>
 
-                    <label class="codex-toggle">
-                        <input type="checkbox" x-model="fullAuto">
-                        <span>Enable <code>--full-auto</code></span>
-                    </label>
+                    <section class="codex-card">
+                        <h2>Model</h2>
+
+                        <label class="codex-label" for="model">Model</label>
+                        <select id="model" x-model="model">
+                            <template x-for="option in modelOptions" :key="option.value">
+                                <option :value="option.value" x-text="option.value"></option>
+                            </template>
+                        </select>
+                        <p class="codex-hint" x-text="selectedDescription(modelOptions, model)"></p>
+
+                        <label class="codex-label" for="reasoningEffort">Reasoning effort</label>
+                        <select id="reasoningEffort" x-model="reasoningEffort">
+                            <template x-for="option in reasoningOptions" :key="option.value">
+                                <option :value="option.value" x-text="option.value"></option>
+                            </template>
+                        </select>
+                        <p class="codex-hint" x-text="selectedDescription(reasoningOptions, reasoningEffort)"></p>
+                    </section>
+
+                    <section class="codex-card">
+                        <h2>Execution</h2>
+
+                        <label class="codex-toggle">
+                            <input type="checkbox" x-model="fullAuto">
+                            <span>Enable <code>--full-auto</code></span>
+                        </label>
+
+                        <label class="codex-toggle">
+                            <input type="checkbox" x-model="webSearch">
+                            <span>Enable live web search (<code>--search</code>)</span>
+                        </label>
+
+                        <label class="codex-label" for="sandboxMode">Sandbox</label>
+                        <select id="sandboxMode" x-model="sandboxMode" :disabled="fullAuto">
+                            <template x-for="option in sandboxOptions" :key="option.value">
+                                <option :value="option.value" x-text="option.value"></option>
+                            </template>
+                        </select>
+                        <p class="codex-hint" x-text="selectedDescription(sandboxOptions, sandboxMode)"></p>
+
+                        <label class="codex-label" for="approvalPolicy">Approval policy</label>
+                        <select id="approvalPolicy" x-model="approvalPolicy" :disabled="fullAuto">
+                            <template x-for="option in approvalOptions" :key="option.value">
+                                <option :value="option.value" x-text="option.value"></option>
+                            </template>
+                        </select>
+                        <p class="codex-hint" x-text="selectedDescription(approvalOptions, approvalPolicy)"></p>
+                    </section>
 
                     <details class="codex-log">
                         <summary>CLI Logs (<span x-text="logs.length"></span>)</summary>
@@ -103,9 +174,20 @@
         function codexConsole(config) {
             return {
                 prompt: '',
+                workspaceRoot: config.workspaceRoot ?? '',
+                cwdSuggestions: config.cwdSuggestions ?? [],
+                modelOptions: config.modelOptions ?? [],
+                reasoningOptions: config.reasoningOptions ?? [],
+                sandboxOptions: config.sandboxOptions ?? [],
+                approvalOptions: config.approvalOptions ?? [],
                 cwd: config.defaultCwd ?? '',
                 model: config.defaultModel ?? '',
+                reasoningEffort: config.defaultReasoningEffort ?? 'medium',
                 fullAuto: Boolean(config.defaultFullAuto),
+                sandboxMode: config.defaultSandboxMode ?? 'workspace-write',
+                approvalPolicy: config.defaultApprovalPolicy ?? 'on-request',
+                webSearch: Boolean(config.defaultWebSearch),
+                additionalDirsText: '',
                 sessionId: null,
                 isStreaming: false,
                 statusText: 'Idle',
@@ -122,7 +204,26 @@
                     }
 
                     this.hasInitialized = true;
-                    this.addMessage('system', 'System', 'Ready. Send a prompt to start a Codex session.');
+                    this.addMessage('system', 'System', 'Ready. Use the right-side controls to configure Codex, then send a prompt.');
+                },
+
+                selectedDescription(options, value) {
+                    const target = options.find((option) => option.value === value);
+
+                    if (!target) {
+                        return '';
+                    }
+
+                    return target.description ?? '';
+                },
+
+                parseAdditionalDirectories() {
+                    const lines = this.additionalDirsText
+                        .split('\n')
+                        .map((line) => line.trim())
+                        .filter((line) => line !== '' && line !== this.cwd);
+
+                    return [...new Set(lines)];
                 },
 
                 async sendPrompt() {
@@ -182,8 +283,13 @@
                             prompt,
                             session_id: this.sessionId,
                             model: this.model || null,
+                            reasoning_effort: this.reasoningEffort || null,
                             full_auto: this.fullAuto,
                             cwd: this.cwd || null,
+                            sandbox_mode: this.sandboxMode || null,
+                            approval_policy: this.approvalPolicy || null,
+                            web_search: this.webSearch,
+                            add_dirs: this.parseAdditionalDirectories(),
                         }),
                         signal: this.streamController.signal,
                     });

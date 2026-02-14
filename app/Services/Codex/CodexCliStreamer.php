@@ -8,14 +8,32 @@ use Symfony\Component\Process\Process;
 
 class CodexCliStreamer
 {
+    /**
+     * @param  array<int, string>  $additionalDirectories
+     */
     public function stream(
         string $prompt,
         ?string $sessionId = null,
         ?string $model = null,
+        ?string $reasoningEffort = null,
         bool $fullAuto = false,
-        ?string $cwd = null
+        ?string $cwd = null,
+        ?string $sandboxMode = null,
+        ?string $approvalPolicy = null,
+        bool $webSearch = false,
+        array $additionalDirectories = []
     ): Generator {
-        $command = $this->buildCommand($sessionId, $model, $fullAuto, $cwd);
+        $command = $this->buildCommand(
+            sessionId: $sessionId,
+            model: $model,
+            reasoningEffort: $reasoningEffort,
+            fullAuto: $fullAuto,
+            cwd: $cwd,
+            sandboxMode: $sandboxMode,
+            approvalPolicy: $approvalPolicy,
+            webSearch: $webSearch,
+            additionalDirectories: $additionalDirectories,
+        );
 
         $process = new Process($command, $this->resolveWorkingDirectory($cwd));
         $process->setTimeout((float) config('codex.process_timeout'));
@@ -66,10 +84,20 @@ class CodexCliStreamer
     }
 
     /**
+     * @param  array<int, string>  $additionalDirectories
      * @return array<int, string>
      */
-    private function buildCommand(?string $sessionId, ?string $model, bool $fullAuto, ?string $cwd): array
-    {
+    private function buildCommand(
+        ?string $sessionId,
+        ?string $model,
+        ?string $reasoningEffort,
+        bool $fullAuto,
+        ?string $cwd,
+        ?string $sandboxMode,
+        ?string $approvalPolicy,
+        bool $webSearch,
+        array $additionalDirectories
+    ): array {
         $command = [config('codex.binary'), 'exec'];
 
         if (filled($sessionId)) {
@@ -84,16 +112,40 @@ class CodexCliStreamer
 
         if ($fullAuto) {
             $command[] = '--full-auto';
+        } else {
+            if (filled($sandboxMode)) {
+                $command[] = '--sandbox';
+                $command[] = $sandboxMode;
+            }
+
+            if (filled($approvalPolicy)) {
+                $command[] = '--ask-for-approval';
+                $command[] = $approvalPolicy;
+            }
+        }
+
+        if ($webSearch) {
+            $command[] = '--search';
         }
 
         if (filled($model)) {
-            $command[] = '-m';
+            $command[] = '--model';
             $command[] = $model;
         }
 
+        if (filled($reasoningEffort)) {
+            $command[] = '--config';
+            $command[] = sprintf('model_reasoning_effort="%s"', $reasoningEffort);
+        }
+
         if (blank($sessionId) && filled($cwd)) {
-            $command[] = '-C';
+            $command[] = '--cd';
             $command[] = $this->resolveWorkingDirectory($cwd);
+        }
+
+        foreach ($additionalDirectories as $directory) {
+            $command[] = '--add-dir';
+            $command[] = $this->resolveWorkingDirectory($directory);
         }
 
         if (filled($sessionId)) {

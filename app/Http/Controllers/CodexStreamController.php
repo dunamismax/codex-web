@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\CodexStreamRequest;
 use App\Services\Codex\CodexCliStreamer;
-use Illuminate\Http\Request;
 use Illuminate\Http\StreamedEvent;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -11,19 +11,33 @@ use Throwable;
 
 class CodexStreamController extends Controller
 {
-    public function __invoke(Request $request, CodexCliStreamer $streamer): StreamedResponse
+    public function __invoke(CodexStreamRequest $request, CodexCliStreamer $streamer): StreamedResponse
     {
-        $validated = $request->validate([
-            'prompt' => ['required', 'string', 'max:120000'],
-            'session_id' => ['nullable', 'string', 'max:255'],
-            'model' => ['nullable', 'string', 'max:255'],
-            'full_auto' => ['nullable', 'boolean'],
-            'cwd' => ['nullable', 'string', 'max:4096'],
-        ]);
+        /** @var array{
+         * prompt: string,
+         * session_id?: string|null,
+         * model?: string|null,
+         * reasoning_effort?: string|null,
+         * full_auto?: bool|null,
+         * cwd?: string|null,
+         * sandbox_mode?: string|null,
+         * approval_policy?: string|null,
+         * web_search?: bool|null,
+         * add_dirs?: array<int, string>|null
+         * } $validated
+         */
+        $validated = $request->validated();
 
-        $resolvedCwd = $this->validateWorkspacePath($validated['cwd'] ?? null);
+        $resolvedCwd = $this->validateWorkspacePath(
+            cwd: $validated['cwd'] ?? null,
+            field: 'cwd',
+            defaultToConfigured: true,
+            doesNotExistMessage: 'Working directory does not exist.',
+            outOfBoundsMessage: 'Working directory must be inside the configured workspace root.',
+        );
+        $resolvedAddDirs = $this->validateAdditionalDirectories($validated['add_dirs'] ?? []);
 
-        return response()->eventStream(function () use ($streamer, $validated, $resolvedCwd) {
+        return response()->eventStream(function () use ($streamer, $validated, $resolvedCwd, $resolvedAddDirs) {
             yield new StreamedEvent(
                 event: 'meta',
                 data: [
@@ -37,8 +51,13 @@ class CodexStreamController extends Controller
                     prompt: $validated['prompt'],
                     sessionId: $validated['session_id'] ?? null,
                     model: $validated['model'] ?? config('codex.default_model'),
-                    fullAuto: $validated['full_auto'] ?? (bool) config('codex.default_full_auto', true),
+                    reasoningEffort: $validated['reasoning_effort'] ?? config('codex.default_reasoning_effort'),
+                    fullAuto: $validated['full_auto'] ?? (bool) config('codex.default_full_auto', false),
                     cwd: $resolvedCwd,
+                    sandboxMode: $validated['sandbox_mode'] ?? config('codex.default_sandbox_mode'),
+                    approvalPolicy: $validated['approval_policy'] ?? config('codex.default_approval_policy'),
+                    webSearch: $validated['web_search'] ?? (bool) config('codex.default_search', false),
+                    additionalDirectories: $resolvedAddDirs,
                 ) as $event) {
                     yield new StreamedEvent(event: 'codex', data: $event);
                 }
@@ -65,17 +84,51 @@ class CodexStreamController extends Controller
         }, endStreamWith: null);
     }
 
-    private function validateWorkspacePath(?string $cwd): string
+    /**
+     * @param  array<int, string>  $directories
+     * @return array<int, string>
+     */
+    private function validateAdditionalDirectories(array $directories): array
     {
+        $resolved = [];
+
+        foreach ($directories as $index => $directory) {
+            $resolved[] = $this->validateWorkspacePath(
+                cwd: $directory,
+                field: "add_dirs.$index",
+                defaultToConfigured: false,
+                doesNotExistMessage: 'Additional writable directory does not exist.',
+                outOfBoundsMessage: 'Additional writable directories must be inside the configured workspace root.',
+            );
+        }
+
+        return array_values(array_unique($resolved));
+    }
+
+    private function validateWorkspacePath(
+        ?string $cwd,
+        string $field,
+        bool $defaultToConfigured,
+        string $doesNotExistMessage,
+        string $outOfBoundsMessage
+    ): string {
         $workspaceRoot = realpath((string) config('codex.workspace_root', base_path()));
 
         if ($workspaceRoot === false) {
             throw ValidationException::withMessages([
-                'cwd' => 'Configured workspace root is invalid.',
+                $field => 'Configured workspace root is invalid.',
             ]);
         }
 
-        $target = filled($cwd) ? $cwd : (string) config('codex.default_cwd', base_path());
+        $target = filled($cwd)
+            ? $cwd
+            : ($defaultToConfigured ? (string) config('codex.default_cwd', base_path()) : null);
+
+        if (blank($target)) {
+            throw ValidationException::withMessages([
+                $field => $doesNotExistMessage,
+            ]);
+        }
 
         if (! $this->isAbsolutePath($target)) {
             $target = $workspaceRoot.DIRECTORY_SEPARATOR.$target;
@@ -85,7 +138,7 @@ class CodexStreamController extends Controller
 
         if ($resolved === false || ! is_dir($resolved)) {
             throw ValidationException::withMessages([
-                'cwd' => 'Working directory does not exist.',
+                $field => $doesNotExistMessage,
             ]);
         }
 
@@ -93,7 +146,7 @@ class CodexStreamController extends Controller
 
         if ($resolved !== $workspaceRoot && ! str_starts_with($resolved, $workspacePrefix)) {
             throw ValidationException::withMessages([
-                'cwd' => 'Working directory must be inside the configured workspace root.',
+                $field => $outOfBoundsMessage,
             ]);
         }
 
