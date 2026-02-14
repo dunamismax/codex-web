@@ -114,8 +114,14 @@
                 streamController: null,
                 messageCounter: 0,
                 assistantMessageId: null,
+                hasInitialized: false,
 
                 init() {
+                    if (this.hasInitialized) {
+                        return;
+                    }
+
+                    this.hasInitialized = true;
                     this.addMessage('system', 'System', 'Ready. Send a prompt to start a Codex session.');
                 },
 

@@ -52,6 +52,12 @@ Optional local seed data:
 
 - No demo seed data is currently shipped beyond default Laravel seed scaffolding.
 
+### App Screenshot
+
+<p align="center">
+  <img src="public/Codex-Web%20Screenshot.png" alt="Codex Web application screenshot" width="1200" />
+</p>
+
 ## Features
 
 - Live chat-style Codex console at `/` with prompt composer, stream controls, and transcript view.
