@@ -98,9 +98,10 @@ class CodexCliStreamer
         bool $webSearch,
         array $additionalDirectories
     ): array {
+        $isResuming = filled($sessionId);
         $command = [config('codex.binary'), 'exec'];
 
-        if (filled($sessionId)) {
+        if ($isResuming) {
             $command[] = 'resume';
         }
 
@@ -112,20 +113,11 @@ class CodexCliStreamer
 
         if ($fullAuto) {
             $command[] = '--full-auto';
-        } else {
+        } elseif (! $isResuming) {
             if (filled($sandboxMode)) {
                 $command[] = '--sandbox';
                 $command[] = $sandboxMode;
             }
-
-            if (filled($approvalPolicy)) {
-                $command[] = '--ask-for-approval';
-                $command[] = $approvalPolicy;
-            }
-        }
-
-        if ($webSearch) {
-            $command[] = '--search';
         }
 
         if (filled($model)) {
@@ -138,17 +130,19 @@ class CodexCliStreamer
             $command[] = sprintf('model_reasoning_effort="%s"', $reasoningEffort);
         }
 
-        if (blank($sessionId) && filled($cwd)) {
+        if (! $isResuming && filled($cwd)) {
             $command[] = '--cd';
             $command[] = $this->resolveWorkingDirectory($cwd);
         }
 
-        foreach ($additionalDirectories as $directory) {
-            $command[] = '--add-dir';
-            $command[] = $this->resolveWorkingDirectory($directory);
+        if (! $isResuming) {
+            foreach ($additionalDirectories as $directory) {
+                $command[] = '--add-dir';
+                $command[] = $this->resolveWorkingDirectory($directory);
+            }
         }
 
-        if (filled($sessionId)) {
+        if ($isResuming) {
             $command[] = $sessionId;
         }
 

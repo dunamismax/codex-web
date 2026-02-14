@@ -55,7 +55,7 @@ Optional local seed data:
 ### App Screenshot
 
 <p align="center">
-  <img src="public/Codex-Web%20Screenshot%20v2.png" alt="Codex Web application screenshot" width="1200" />
+  <img src="public/Codex-Web%20Screenshot%20v3.png" alt="Codex Web application screenshot" width="1200" />
 </p>
 
 ## Features

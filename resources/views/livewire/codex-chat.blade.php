@@ -22,7 +22,7 @@
 >
     <div class="codex-aurora"></div>
 
-    <main class="mx-auto max-w-7xl p-4 md:p-8">
+    <main class="codex-main mx-auto max-w-7xl">
         <section class="codex-frame">
             <header class="codex-header">
                 <div>
@@ -41,8 +41,8 @@
                 </div>
             </header>
 
-            <div class="grid gap-4 lg:grid-cols-[2fr_1fr]">
-                <section class="codex-panel">
+            <div class="codex-layout grid gap-4 lg:grid-cols-[2fr_1fr]">
+                <section class="codex-panel codex-chat-panel">
                     <div x-ref="transcript" class="codex-transcript">
                         <template x-for="message in messages" :key="message.id">
                             <article class="codex-msg" :class="`codex-msg-${message.role}`">
