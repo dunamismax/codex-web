@@ -91,7 +91,7 @@ Expected local endpoints:
 ## App Screenshot
 
 <p align="center">
-  <img src="public/Codex-Web%20Screenshot%20v3.png" alt="Codex Web application screenshot" width="1200" />
+  <img src="public/Codex-Web%20Screenshot%20v4.png" alt="Codex Web application screenshot" width="1200" />
 </p>
 
 ## Configuration
