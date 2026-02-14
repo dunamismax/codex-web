@@ -1,0 +1,291 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+@theme {
+    --font-sans: 'Space Grotesk', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+}
+
+:root {
+    --codex-bg: #081022;
+    --codex-ink: #dce6ff;
+    --codex-panel: rgba(8, 16, 34, 0.86);
+    --codex-border: rgba(150, 196, 255, 0.22);
+    --codex-accent: #58d3ff;
+    --codex-accent-strong: #3bffb4;
+    --codex-danger: #ff7b93;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    color: var(--codex-ink);
+    background:
+        radial-gradient(55rem 55rem at -10% -20%, rgba(88, 211, 255, 0.2), transparent 45%),
+        radial-gradient(45rem 45rem at 120% -10%, rgba(59, 255, 180, 0.18), transparent 50%),
+        linear-gradient(140deg, #040912 0%, #0a1227 44%, #070d1d 100%);
+}
+
+.codex-shell {
+    position: relative;
+    isolation: isolate;
+}
+
+.codex-aurora {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    opacity: 0.6;
+    background:
+        radial-gradient(30rem 18rem at 70% 20%, rgba(59, 255, 180, 0.15), transparent 60%),
+        radial-gradient(34rem 20rem at 20% 80%, rgba(88, 211, 255, 0.12), transparent 58%);
+    animation: auroraFloat 9s ease-in-out infinite alternate;
+}
+
+.codex-frame {
+    border: 1px solid var(--codex-border);
+    border-radius: 1.25rem;
+    background: linear-gradient(160deg, rgba(8, 16, 34, 0.8), rgba(4, 10, 22, 0.95));
+    backdrop-filter: blur(14px);
+    box-shadow: 0 35px 80px rgba(0, 0, 0, 0.35);
+    padding: 1rem;
+}
+
+.codex-header {
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.codex-header h1 {
+    margin: 0;
+    font-size: clamp(1.2rem, 2vw, 1.75rem);
+    line-height: 1.1;
+}
+
+.codex-kicker {
+    margin: 0 0 0.4rem;
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--codex-accent) 70%, white 30%);
+}
+
+.codex-status-group {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.codex-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border-radius: 999px;
+    border: 1px solid var(--codex-border);
+    padding: 0.35rem 0.6rem;
+    font-size: 0.75rem;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.codex-pill-mono {
+    font-family: var(--font-mono);
+}
+
+.codex-pill-live .codex-dot {
+    background: var(--codex-accent-strong);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--codex-accent-strong) 60%, transparent);
+}
+
+.codex-pill-idle .codex-dot {
+    background: rgba(255, 255, 255, 0.4);
+}
+
+.codex-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 999px;
+}
+
+.codex-panel {
+    border: 1px solid var(--codex-border);
+    border-radius: 1rem;
+    background: var(--codex-panel);
+    padding: 0.9rem;
+}
+
+.codex-transcript {
+    height: min(62vh, 44rem);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    padding-right: 0.35rem;
+}
+
+.codex-msg {
+    border-radius: 0.9rem;
+    padding: 0.7rem 0.8rem;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.codex-msg h3 {
+    margin: 0 0 0.35rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    font-family: var(--font-mono);
+}
+
+.codex-msg p {
+    margin: 0;
+    white-space: pre-wrap;
+    line-height: 1.45;
+}
+
+.codex-msg-user {
+    align-self: flex-end;
+    width: min(90%, 48rem);
+    background: rgba(88, 211, 255, 0.14);
+}
+
+.codex-msg-assistant {
+    width: min(100%, 52rem);
+    background: rgba(59, 255, 180, 0.09);
+}
+
+.codex-msg-system {
+    width: min(100%, 52rem);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.codex-msg-error {
+    width: min(100%, 52rem);
+    border-color: color-mix(in srgb, var(--codex-danger) 60%, white 40%);
+    background: rgba(255, 123, 147, 0.12);
+}
+
+.codex-composer {
+    margin-top: 0.9rem;
+    display: grid;
+    gap: 0.6rem;
+}
+
+.codex-label {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--codex-ink) 80%, white 20%);
+}
+
+.codex-composer textarea,
+.codex-sidebar input {
+    width: 100%;
+    border-radius: 0.7rem;
+    border: 1px solid var(--codex-border);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--codex-ink);
+    padding: 0.65rem 0.75rem;
+    font-size: 0.95rem;
+}
+
+.codex-composer textarea:focus,
+.codex-sidebar input:focus {
+    outline: none;
+    border-color: color-mix(in srgb, var(--codex-accent) 70%, white 30%);
+    box-shadow: 0 0 0 3px rgba(88, 211, 255, 0.18);
+}
+
+.codex-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+}
+
+.codex-btn {
+    border-radius: 0.65rem;
+    border: 1px solid var(--codex-border);
+    padding: 0.55rem 0.85rem;
+    font-size: 0.86rem;
+    cursor: pointer;
+}
+
+.codex-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.codex-btn-primary {
+    color: #041225;
+    border-color: color-mix(in srgb, var(--codex-accent) 60%, white 40%);
+    background: linear-gradient(135deg, var(--codex-accent), var(--codex-accent-strong));
+}
+
+.codex-btn-quiet {
+    color: var(--codex-ink);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.codex-sidebar {
+    display: grid;
+    gap: 0.9rem;
+    align-content: start;
+}
+
+.codex-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-size: 0.9rem;
+}
+
+.codex-toggle code {
+    font-family: var(--font-mono);
+}
+
+.codex-log {
+    border: 1px solid var(--codex-border);
+    border-radius: 0.75rem;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.codex-log summary {
+    cursor: pointer;
+    padding: 0.55rem 0.65rem;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+}
+
+.codex-log div {
+    max-height: 14rem;
+    overflow: auto;
+    border-top: 1px solid var(--codex-border);
+    padding: 0.5rem 0.65rem;
+}
+
+.codex-log p {
+    margin: 0 0 0.4rem;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.55rem;
+    font-size: 0.8rem;
+    font-family: var(--font-mono);
+}
+
+@keyframes auroraFloat {
+    from {
+        transform: translate3d(0, 0, 0) scale(1);
+    }
+
+    to {
+        transform: translate3d(-0.5rem, 0.6rem, 0) scale(1.03);
+    }
+}
