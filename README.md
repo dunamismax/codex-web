@@ -22,6 +22,8 @@ Codex Web is a browser UI for Codex CLI workflows. It streams Codex responses in
   - Reasoning effort
   - `--full-auto`
   - Sandbox mode
+  - Approval policy
+  - Live web search
 - Server-side path safety: `cwd` / `add_dirs` must resolve inside the selected `workspace_root`.
 - Responsive viewport behavior with internal panel scrolling on large screens.
 
@@ -38,14 +40,13 @@ Current Codex CLI forwarding behavior in this app:
   - `reasoning_effort` (`--config model_reasoning_effort=...`)
   - `full_auto` (`--full-auto`)
   - `sandbox_mode` (`--sandbox`) when not full-auto
+  - `approval_policy` (`--ask-for-approval`) when not full-auto
+  - `web_search` (`--search`)
   - `cwd` (`--cd`)
   - `add_dirs` (`--add-dir`)
 - Forwarded on resumed turns (`codex exec resume`):
-  - `model`, `reasoning_effort`, `full_auto`
+  - `model`, `reasoning_effort`, `full_auto`, `approval_policy`, `web_search`
   - `session_id` (resume target)
-- Not currently forwarded to CLI flags by this app:
-  - `approval_policy`
-  - `web_search`
 
 ## Requirements
 

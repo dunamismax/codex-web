@@ -318,4 +318,62 @@ class ExampleTest extends TestCase
         $this->assertStringContainsString('Codex binary was not found.', $streamed);
         $this->assertStringContainsString('event: done', $streamed);
     }
+
+    public function test_streamer_build_command_forwards_approval_and_web_search_when_not_full_auto(): void
+    {
+        config()->set('codex.binary', 'codex');
+        config()->set('codex.skip_git_repo_check', true);
+
+        $streamer = new CodexCliStreamer;
+        $buildCommand = new \ReflectionMethod(CodexCliStreamer::class, 'buildCommand');
+        $buildCommand->setAccessible(true);
+
+        /** @var array<int, string> $command */
+        $command = $buildCommand->invoke(
+            $streamer,
+            null,
+            'gpt-5.2-codex',
+            'high',
+            false,
+            base_path(),
+            'workspace-write',
+            'on-request',
+            true,
+            []
+        );
+
+        $this->assertSame('codex', $command[0]);
+        $this->assertContains('--ask-for-approval', $command);
+        $this->assertContains('on-request', $command);
+        $this->assertContains('--search', $command);
+        $this->assertContains('exec', $command);
+    }
+
+    public function test_streamer_build_command_skips_approval_when_full_auto_enabled(): void
+    {
+        config()->set('codex.binary', 'codex');
+        config()->set('codex.skip_git_repo_check', true);
+
+        $streamer = new CodexCliStreamer;
+        $buildCommand = new \ReflectionMethod(CodexCliStreamer::class, 'buildCommand');
+        $buildCommand->setAccessible(true);
+
+        /** @var array<int, string> $command */
+        $command = $buildCommand->invoke(
+            $streamer,
+            null,
+            'gpt-5.2-codex',
+            'high',
+            true,
+            base_path(),
+            'workspace-write',
+            'never',
+            true,
+            []
+        );
+
+        $this->assertContains('--full-auto', $command);
+        $this->assertNotContains('--ask-for-approval', $command);
+        $this->assertContains('--search', $command);
+    }
 }

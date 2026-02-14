@@ -99,7 +99,18 @@ class CodexCliStreamer
         array $additionalDirectories
     ): array {
         $isResuming = filled($sessionId);
-        $command = [config('codex.binary'), 'exec'];
+        $command = [config('codex.binary')];
+
+        if (! $fullAuto && filled($approvalPolicy)) {
+            $command[] = '--ask-for-approval';
+            $command[] = $approvalPolicy;
+        }
+
+        if ($webSearch) {
+            $command[] = '--search';
+        }
+
+        $command[] = 'exec';
 
         if ($isResuming) {
             $command[] = 'resume';
