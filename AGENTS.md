@@ -50,6 +50,7 @@ This project has domain-specific skills available. You MUST activate the relevan
 ## Documentation Files
 
 - You must only create documentation files if explicitly requested by the user.
+- When documentation files are edited, ensure they describe current behavior, supported options, and command usage exactly as implemented.
 
 ## Replies
 
@@ -104,7 +105,7 @@ This project has domain-specific skills available. You MUST activate the relevan
 ## Constructors
 
 - Use PHP 8 constructor property promotion in `__construct()`.
-    - `public function __construct(public GitHub $github) { }`
+  - `public function __construct(public GitHub $github) { }`
 - Do not allow empty `__construct()` methods with zero parameters unless the constructor is private.
 
 ## Type Declarations
@@ -293,5 +294,14 @@ protected function isAccessible(User $user, ?string $path = null): bool
 - Always use existing Tailwind conventions; check project patterns before adding new ones.
 - IMPORTANT: Always use `search-docs` tool for version-specific Tailwind CSS documentation and updated code examples. Never rely on training data.
 - IMPORTANT: Activate `tailwindcss-development` every time you're working with a Tailwind CSS or styling-related task.
+
+=== repository/finalization rules ===
+
+# Final Accuracy Pass (Mandatory)
+
+- Before finalizing any task, run an explicit accuracy pass on both `README.md` and `AGENTS.md`, even if they were not directly edited.
+- Verify that documentation matches current code behavior, defaults, supported runtime options, CLI flag support, routes, and commands.
+- If any mismatch is found, update the files in the same work session before final response.
+- In the final response, explicitly confirm that the README/AGENTS accuracy pass was completed.
 
 </laravel-boost-guidelines>
