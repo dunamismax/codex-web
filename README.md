@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/favicon.ico" alt="Codex Web logo" width="84" />
+  <img src="public/favicon.svg" alt="Codex Web logo" width="84" />
 </p>
 
 <p align="center">
