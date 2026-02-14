@@ -135,6 +135,8 @@
                     try {
                         await this.consumeStream(bodyPrompt);
                     } catch (error) {
+                        this.pruneEmptyAssistantMessage();
+
                         if (error?.name === 'AbortError') {
                             this.addMessage('system', 'System', 'Streaming stopped.');
                         } else {
@@ -181,8 +183,7 @@
                     });
 
                     if (!response.ok || !response.body) {
-                        const message = await response.text();
-                        throw new Error(message || `Request failed (${response.status}).`);
+                        throw new Error(await this.readErrorMessage(response));
                     }
 
                     const reader = response.body.getReader();
@@ -204,7 +205,7 @@
                 },
 
                 parseSseBuffer(buffer) {
-                    const normalized = buffer.replaceAll('\r', '');
+                    const normalized = buffer.replace(/\r/g, '');
                     let rest = normalized;
                     let boundary = rest.indexOf('\n\n');
 
@@ -247,8 +248,32 @@
                         payload = { type: 'invalid.payload', raw: rawData };
                     }
 
+                    if (eventName === 'meta') {
+                        this.handleMetaEvent(payload);
+                    }
+
                     if (eventName === 'codex') {
                         this.handleCodexEvent(payload);
+                    }
+
+                    if (eventName === 'done') {
+                        this.handleDoneEvent(payload);
+                    }
+                },
+
+                handleMetaEvent(payload) {
+                    if (!payload) {
+                        return;
+                    }
+
+                    if (payload.session_id) {
+                        this.sessionId = payload.session_id;
+                    }
+                },
+
+                handleDoneEvent(payload) {
+                    if (!payload) {
+                        return;
                     }
                 },
 
@@ -283,8 +308,35 @@
                     }
 
                     if (payload.type === 'process.exited' && payload.exit_code !== 0) {
+                        this.pruneEmptyAssistantMessage();
                         this.addMessage('error', 'System', `Codex process exited with code ${payload.exit_code}.`);
                     }
+                },
+
+                async readErrorMessage(response) {
+                    const contentType = response.headers.get('content-type') ?? '';
+
+                    if (contentType.includes('application/json')) {
+                        const json = await response.json().catch(() => null);
+
+                        if (json?.errors && typeof json.errors === 'object') {
+                            const validationError = Object.values(json.errors)
+                                .flat()
+                                .find((message) => typeof message === 'string');
+
+                            if (validationError) {
+                                return validationError;
+                            }
+                        }
+
+                        if (typeof json?.message === 'string' && json.message.trim() !== '') {
+                            return json.message;
+                        }
+                    }
+
+                    const message = await response.text().catch(() => '');
+
+                    return message || `Request failed (${response.status}).`;
                 },
 
                 setAssistantText(text) {
@@ -301,6 +353,21 @@
                     this.messages.push({ id, role, label, text });
                     this.scrollToBottom();
                     return id;
+                },
+
+                pruneEmptyAssistantMessage() {
+                    const index = this.messages.findIndex((message) => message.id === this.assistantMessageId);
+
+                    if (index === -1) {
+                        return;
+                    }
+
+                    const assistantMessage = this.messages[index];
+
+                    if (!assistantMessage.text || assistantMessage.text.trim() === '') {
+                        this.messages.splice(index, 1);
+                        this.assistantMessageId = null;
+                    }
                 },
 
                 nextId() {

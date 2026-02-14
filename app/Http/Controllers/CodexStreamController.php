@@ -6,10 +6,12 @@ use App\Services\Codex\CodexCliStreamer;
 use Illuminate\Http\Request;
 use Illuminate\Http\StreamedEvent;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
 
 class CodexStreamController extends Controller
 {
-    public function __invoke(Request $request, CodexCliStreamer $streamer)
+    public function __invoke(Request $request, CodexCliStreamer $streamer): StreamedResponse
     {
         $validated = $request->validate([
             'prompt' => ['required', 'string', 'max:120000'],
@@ -30,20 +32,36 @@ class CodexStreamController extends Controller
                 ],
             );
 
-            foreach ($streamer->stream(
-                prompt: $validated['prompt'],
-                sessionId: $validated['session_id'] ?? null,
-                model: $validated['model'] ?? config('codex.default_model'),
-                fullAuto: $validated['full_auto'] ?? (bool) config('codex.default_full_auto', true),
-                cwd: $resolvedCwd,
-            ) as $event) {
-                yield new StreamedEvent(event: 'codex', data: $event);
-            }
+            try {
+                foreach ($streamer->stream(
+                    prompt: $validated['prompt'],
+                    sessionId: $validated['session_id'] ?? null,
+                    model: $validated['model'] ?? config('codex.default_model'),
+                    fullAuto: $validated['full_auto'] ?? (bool) config('codex.default_full_auto', true),
+                    cwd: $resolvedCwd,
+                ) as $event) {
+                    yield new StreamedEvent(event: 'codex', data: $event);
+                }
+            } catch (Throwable $exception) {
+                report($exception);
 
-            yield new StreamedEvent(
-                event: 'done',
-                data: ['type' => 'stream.finished'],
-            );
+                $message = config('app.debug')
+                    ? $exception->getMessage()
+                    : 'Codex stream failed unexpectedly.';
+
+                yield new StreamedEvent(
+                    event: 'codex',
+                    data: [
+                        'type' => 'error',
+                        'message' => $message,
+                    ],
+                );
+            } finally {
+                yield new StreamedEvent(
+                    event: 'done',
+                    data: ['type' => 'stream.finished'],
+                );
+            }
         }, endStreamWith: null);
     }
 
@@ -59,7 +77,7 @@ class CodexStreamController extends Controller
 
         $target = filled($cwd) ? $cwd : (string) config('codex.default_cwd', base_path());
 
-        if (! str_starts_with($target, DIRECTORY_SEPARATOR)) {
+        if (! $this->isAbsolutePath($target)) {
             $target = $workspaceRoot.DIRECTORY_SEPARATOR.$target;
         }
 
@@ -80,5 +98,12 @@ class CodexStreamController extends Controller
         }
 
         return $resolved;
+    }
+
+    private function isAbsolutePath(string $path): bool
+    {
+        return str_starts_with($path, DIRECTORY_SEPARATOR)
+            || str_starts_with($path, '\\\\')
+            || preg_match('/^[a-zA-Z]:[\\\\\\/]/', $path) === 1;
     }
 }

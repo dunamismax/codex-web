@@ -1,80 +1,198 @@
-# Codex Web (Laravel + Livewire)
+<p align="center">
+  <img src="public/favicon.ico" alt="Codex Web logo" width="84" />
+</p>
 
-A Laravel 12 + Livewire app that streams Codex CLI output into a web chat UI.
+<p align="center">
+  A Laravel + Livewire web console for streaming Codex CLI runs from your browser.
+</p>
 
-## What this builds
+# Codex Web
 
-- Live chat-style web interface (`/`) with a custom UI
-- Backend SSE endpoint that runs Codex CLI in real time
-- JSONL event parsing from `codex exec --json`
-- Session continuity using Codex `thread_id` + `codex exec resume`
-- Configurable working directory, model, and `--full-auto`
+Codex Web is a browser UI for engineers who want Codex CLI workflows without living in the terminal. It streams Codex responses in real time, supports session continuation, and enforces workspace path boundaries server-side.
 
-## Stack
+## Trust Signals
 
-- Laravel 12
-- Livewire 4 (class-based component)
-- Symfony Process (via Laravel) for Codex process orchestration
-- Server-Sent Events (`response()->eventStream`) for streaming
+![PHP](https://img.shields.io/badge/PHP-8.2%2B-777BB4?logo=php&logoColor=white)
+![Laravel](https://img.shields.io/badge/Laravel-12-FF2D20?logo=laravel&logoColor=white)
+![Livewire](https://img.shields.io/badge/Livewire-4-4E56A6)
+![PHPUnit](https://img.shields.io/badge/Tested_with-PHPUnit_11-22C55E)
+![License](https://img.shields.io/badge/License-MIT-blue)
 
-## Run locally
+## Quick Start
 
-1. Install deps:
+### Prerequisites
+
+- PHP 8.2+
+- Composer 2+
+- Node.js 20+
+- npm 10+
+- SQLite 3+ (default) or another Laravel-supported database
+- [Codex CLI](https://developers.openai.com/codex/cli) installed and authenticated
+
+### Run
 
 ```bash
+git clone <your-repo-url> codex-web
+cd codex-web
+cp .env.example .env
 composer install
 npm install
+php artisan key:generate
+php artisan migrate
+composer dev
 ```
 
-2. Configure environment:
+Expected result:
+
+- App is available at `http://localhost:8000`
+- Health endpoint responds at `http://localhost:8000/up`
+- Home page shows the `Codex Stream Console`
+
+Optional local seed data:
+
+- No demo seed data is currently shipped beyond default Laravel seed scaffolding.
+
+## Features
+
+- Live chat-style Codex console at `/` with prompt composer, stream controls, and transcript view.
+- Real-time SSE stream endpoint at `POST /codex/stream` using `response()->eventStream(...)`.
+- Codex thread continuity via `thread.started` handling and `session_id` resume support.
+- Configurable runtime options per prompt: working directory, model override, and `--full-auto` toggle.
+- Workspace safety checks that reject `cwd` values outside `CODEX_WORKSPACE_ROOT`.
+- Structured stream error handling that emits SSE error events and a deterministic stream completion event.
+
+## Tech Stack
+
+| Layer | Technology | Purpose |
+|---|---|---|
+| Backend | [Laravel 12](https://laravel.com/docs/12.x) | Routing, validation, streamed responses, app lifecycle |
+| Reactive UI | [Livewire 4](https://livewire.laravel.com/) + Alpine | Chat UI state and browser-side stream handling |
+| Realtime Transport | [Server-Sent Events](https://laravel.com/docs/12.x/responses#event-streams) | Incremental Codex event delivery |
+| Codex Runtime | [Codex CLI](https://developers.openai.com/codex/cli) | Agent execution engine (`exec` / `resume`) |
+| Styling / Build | [Tailwind CSS 4](https://tailwindcss.com/) + [Vite 7](https://vite.dev/) | Styling and frontend bundling |
+| Data | SQLite (default) | App/session/cache/queue persistence in local development |
+| Testing | [PHPUnit 11](https://phpunit.de/) via Laravel test runner | Feature and unit regression coverage |
+| Code Style | [Laravel Pint](https://laravel.com/docs/12.x/pint) | Automated PHP formatting |
+
+## Project Structure
+
+```sh
+codex-web/
+├── app/
+│   ├── Http/Controllers/CodexStreamController.php   # Validates stream requests and returns SSE responses
+│   ├── Livewire/CodexChat.php                       # Livewire page component config/state bootstrap
+│   └── Services/Codex/CodexCliStreamer.php          # Codex CLI process orchestration and JSONL parsing
+├── config/codex.php                                 # Codex binary, workspace, model, timeout defaults
+├── resources/
+│   ├── views/chat.blade.php                         # Main page shell
+│   ├── views/livewire/codex-chat.blade.php          # Console UI + client-side SSE parser
+│   ├── css/app.css                                  # Tailwind v4 theme and component styling
+│   └── js/app.js                                    # Frontend entrypoint
+├── routes/web.php                                   # `/` and `POST /codex/stream` routes
+├── tests/Feature/ExampleTest.php                    # Stream endpoint and page behavior coverage
+├── tests/Unit/ExampleTest.php                       # Baseline unit test
+├── composer.json                                    # PHP dependencies and workflow scripts
+└── package.json                                     # Frontend scripts and dependencies
+```
+
+## Development Workflow and Common Commands
+
+### Setup
+
+```bash
+composer setup
+```
+
+Alternative explicit setup:
 
 ```bash
 cp .env.example .env
+composer install
+npm install
 php artisan key:generate
+php artisan migrate
 ```
 
-3. Optional Codex settings in `.env`:
-
-```dotenv
-CODEX_BINARY=codex
-CODEX_WORKSPACE_ROOT=/absolute/path/allowed-for-codex
-CODEX_DEFAULT_CWD=/absolute/path/allowed-for-codex
-CODEX_DEFAULT_MODEL=
-CODEX_DEFAULT_FULL_AUTO=true
-CODEX_SKIP_GIT_REPO_CHECK=true
-CODEX_PROCESS_TIMEOUT=1800
-```
-
-4. Start app:
+### Run
 
 ```bash
-npm run dev
-php artisan serve
+composer dev
 ```
 
-5. Open:
+### Test
 
-`http://127.0.0.1:8000`
+```bash
+php artisan test --compact
+php artisan test --compact tests/Feature/ExampleTest.php
+```
 
-## Key files
+### Lint and Format
 
-- `app/Http/Controllers/CodexStreamController.php`: validates request, enforces workspace path guard, returns SSE stream
-- `app/Services/Codex/CodexCliStreamer.php`: runs Codex CLI, parses stdout/stderr JSONL events
-- `app/Livewire/CodexChat.php`: Livewire page component
-- `resources/views/livewire/codex-chat.blade.php`: frontend UI + stream parser logic
-- `config/codex.php`: Codex integration config
+```bash
+vendor/bin/pint --dirty --format agent
+```
 
-## Notes
+### Build
 
-- This implementation uses `codex exec` / `codex exec resume` for robust CLI compatibility and stream parsing.
-- Codex app-server support exists and can be added later for deeper protocol-level parity.
-- Codex authentication/network access must already work in the environment where this app runs.
+```bash
+npm run build
+```
 
-## Research references used
+### Deploy (Generic Laravel Flow)
 
-- Codex docs overview: https://developers.openai.com/codex/overview
-- Codex CLI docs: https://developers.openai.com/codex/cli
-- Codex non-interactive mode (`exec --json`, `resume`): https://developers.openai.com/codex/cli/non-interactive
-- Codex app-server docs: https://developers.openai.com/codex/app-server
-- Laravel streamed responses / SSE (`stream`, `eventStream`): https://laravel.com/docs/12.x/responses
-- Livewire docs (`wire:stream`, JS/event integration): https://livewire.laravel.com
+```bash
+php artisan down
+npm run build
+php artisan migrate --force
+php artisan optimize
+php artisan up
+```
+
+Command verification notes for this README rewrite:
+
+- Verified in this environment: `php artisan --version`, `php artisan route:list --name=codex.stream`, `php artisan route:list --path=up`, `php artisan test --compact tests/Feature/ExampleTest.php`, `npm run build`, `vendor/bin/pint --dirty --format agent`.
+- Not executed in this rewrite: `composer dev`, `composer setup`, full production deploy sequence.
+
+## Deployment and Operations
+
+This repository does not include platform-specific deployment manifests (no committed Docker/Kubernetes/Terraform/Caddy config). Deploy it as a standard Laravel application.
+
+- Build assets with `npm run build` before release.
+- Run schema updates with `php artisan migrate --force` during deploy.
+- Use `GET /up` as a baseline health check endpoint.
+- Use `php artisan pail` for live application log tailing.
+- Roll back the latest migration batch with `php artisan migrate:rollback` if needed.
+
+## Security and Reliability Notes
+
+- `POST /codex/stream` validates request payloads (`prompt`, `session_id`, `model`, `full_auto`, `cwd`) before execution.
+- `cwd` is resolved and constrained to `CODEX_WORKSPACE_ROOT`; out-of-bound paths are rejected with `422` validation errors.
+- Stream runtime exceptions are converted to structured SSE error events so clients receive deterministic failure signals.
+- Routes are in Laravel's `web` middleware stack, so CSRF protection applies to stream POST requests.
+- No authentication or route throttling is configured by default for `/` and `/codex/stream`; run behind trusted access controls before exposing publicly.
+- Secrets should be provided via `.env` and must not be committed.
+
+## Documentation
+
+| Path | Purpose |
+|---|---|
+| [AGENTS.md](AGENTS.md) | Repository-specific coding and tool instructions |
+| [config/codex.php](config/codex.php) | Codex runtime configuration surface |
+| [routes/web.php](routes/web.php) | Route source of truth for page and stream endpoint |
+| [app/Http/Controllers/CodexStreamController.php](app/Http/Controllers/CodexStreamController.php) | SSE controller and workspace path guardrails |
+| [app/Services/Codex/CodexCliStreamer.php](app/Services/Codex/CodexCliStreamer.php) | CLI command construction and output event parsing |
+| [resources/views/livewire/codex-chat.blade.php](resources/views/livewire/codex-chat.blade.php) | Console UI and frontend stream event handling |
+| [tests/Feature/ExampleTest.php](tests/Feature/ExampleTest.php) | Feature tests for stream behavior and validation |
+| [boost.json](boost.json) | Laravel Boost MCP configuration |
+
+## Contributing
+
+Contributions are welcome via pull requests.
+
+1. Create a feature branch.
+2. Run formatting and tests locally.
+3. Open a PR with a clear summary of behavior changes and test impact.
+
+## License
+
+Licensed under the [MIT License](LICENSE).

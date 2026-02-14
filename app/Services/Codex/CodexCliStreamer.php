@@ -109,11 +109,18 @@ class CodexCliStreamer
     {
         $candidate = filled($cwd) ? $cwd : config('codex.default_cwd', base_path());
 
-        if (! str_starts_with($candidate, DIRECTORY_SEPARATOR)) {
+        if (! $this->isAbsolutePath($candidate)) {
             $candidate = base_path($candidate);
         }
 
         return realpath($candidate) ?: base_path();
+    }
+
+    private function isAbsolutePath(string $path): bool
+    {
+        return str_starts_with($path, DIRECTORY_SEPARATOR)
+            || str_starts_with($path, '\\\\')
+            || preg_match('/^[a-zA-Z]:[\\\\\\/]/', $path) === 1;
     }
 
     /**

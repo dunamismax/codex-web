@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use Illuminate\Contracts\View\View;
 use Livewire\Component;
 
 class CodexChat extends Component
@@ -22,7 +23,7 @@ class CodexChat extends Component
         $this->defaultFullAuto = (bool) config('codex.default_full_auto', true);
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.codex-chat');
     }

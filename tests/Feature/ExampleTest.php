@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Services\Codex\CodexCliStreamer;
 use Generator;
+use RuntimeException;
 use Tests\TestCase;
 
 class ExampleTest extends TestCase
@@ -63,6 +64,40 @@ class ExampleTest extends TestCase
 
         $this->assertStringContainsString('event: codex', $streamed);
         $this->assertStringContainsString('"type":"thread.started"', $streamed);
+        $this->assertStringContainsString('event: done', $streamed);
+    }
+
+    public function test_stream_endpoint_emits_error_event_when_streamer_fails(): void
+    {
+        config()->set('codex.workspace_root', base_path());
+
+        $this->app->instance(CodexCliStreamer::class, new class extends CodexCliStreamer
+        {
+            public function stream(
+                string $prompt,
+                ?string $sessionId = null,
+                ?string $model = null,
+                bool $fullAuto = false,
+                ?string $cwd = null
+            ): Generator {
+                throw new RuntimeException('Codex binary was not found.');
+            }
+        });
+
+        $response = $this->post(route('codex.stream'), [
+            'prompt' => 'hello',
+            'cwd' => base_path(),
+        ], [
+            'Accept' => 'text/event-stream',
+        ]);
+
+        $response->assertOk();
+
+        $streamed = $response->streamedContent();
+
+        $this->assertStringContainsString('event: codex', $streamed);
+        $this->assertStringContainsString('"type":"error"', $streamed);
+        $this->assertStringContainsString('Codex binary was not found.', $streamed);
         $this->assertStringContainsString('event: done', $streamed);
     }
 }
