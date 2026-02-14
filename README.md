@@ -15,20 +15,21 @@ Codex Web is a browser UI for Codex CLI workflows. It streams Codex responses in
 - Real-time streaming chat UI at `/` backed by `POST /codex/stream` SSE.
 - Session continuation using Codex thread IDs (`exec` + `exec resume`).
 - Configurable runtime controls in the UI:
+  - Workspace location (can be moved anywhere on the system)
   - Working directory
   - Additional writable directories
   - Model
   - Reasoning effort
   - `--full-auto`
   - Sandbox mode
-- Server-side path safety: `cwd` / `add_dirs` must resolve inside `CODEX_WORKSPACE_ROOT`.
+- Server-side path safety: `cwd` / `add_dirs` must resolve inside the selected `workspace_root`.
 - Responsive viewport behavior with internal panel scrolling on large screens.
 
 ## Runtime Option Support (Current)
 
 Codex Web validates and accepts these request fields:
 
-- `prompt`, `session_id`, `model`, `reasoning_effort`, `full_auto`, `cwd`, `sandbox_mode`, `approval_policy`, `web_search`, `add_dirs`
+- `prompt`, `session_id`, `workspace_root`, `model`, `reasoning_effort`, `full_auto`, `cwd`, `sandbox_mode`, `approval_policy`, `web_search`, `add_dirs`
 
 Current Codex CLI forwarding behavior in this app:
 
@@ -133,10 +134,11 @@ npm run build
 ## Security Notes
 
 - Stream requests are validated by `app/Http/Requests/CodexStreamRequest.php`.
-- `cwd` and `add_dirs` are resolved and constrained to `CODEX_WORKSPACE_ROOT`.
+- `workspace_root` is validated as an existing directory.
+- `cwd` and `add_dirs` are resolved and constrained to the selected `workspace_root`.
 - Stream failures are converted into structured SSE error events.
 - Routes use Laravel `web` middleware (CSRF protection included).
-- `/` and `/codex/stream` are unauthenticated by default; protect access before public exposure.
+- `/`, `/codex/stream`, and `/codex/directories` are unauthenticated by default; protect access before public exposure.
 
 ## Project Structure
 
@@ -144,6 +146,7 @@ npm run build
 codex-web/
 ├── app/
 │   ├── Http/Controllers/CodexStreamController.php
+│   ├── Http/Controllers/CodexDirectoryController.php
 │   ├── Http/Requests/CodexStreamRequest.php
 │   ├── Livewire/CodexChat.php
 │   └── Services/Codex/CodexCliStreamer.php

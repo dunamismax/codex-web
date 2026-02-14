@@ -22,6 +22,7 @@ class CodexStreamRequest extends FormRequest
         return [
             'prompt' => ['required', 'string', 'max:120000'],
             'session_id' => ['nullable', 'string', 'max:255'],
+            'workspace_root' => ['nullable', 'string', 'max:4096'],
             'model' => [
                 'nullable',
                 'string',

@@ -9,6 +9,25 @@ use Tests\TestCase;
 
 class ExampleTest extends TestCase
 {
+    public function test_directories_endpoint_returns_current_parent_and_children(): void
+    {
+        $workspace = sys_get_temp_dir().DIRECTORY_SEPARATOR.'codex-web-dir-test';
+        $child = $workspace.DIRECTORY_SEPARATOR.'child';
+        @mkdir($child, 0777, true);
+
+        try {
+            $response = $this->getJson(route('codex.directories', ['path' => $workspace]));
+
+            $response->assertOk();
+            $response->assertJsonPath('current', realpath($workspace));
+            $response->assertJsonPath('children.0', realpath($child));
+            $response->assertJsonPath('parent', dirname(realpath($workspace)));
+        } finally {
+            @rmdir($child);
+            @rmdir($workspace);
+        }
+    }
+
     public function test_chat_page_renders(): void
     {
         $response = $this->get('/');
@@ -45,6 +64,61 @@ class ExampleTest extends TestCase
         $response
             ->assertStatus(422)
             ->assertJsonValidationErrors(['model']);
+    }
+
+    public function test_stream_endpoint_accepts_custom_workspace_root_and_directory(): void
+    {
+        $workspace = sys_get_temp_dir().DIRECTORY_SEPARATOR.'codex-web-workspace-test';
+        @mkdir($workspace, 0777, true);
+
+        $streamer = new class extends CodexCliStreamer
+        {
+            /**
+             * @var array<string, mixed>
+             */
+            public array $captured = [];
+
+            public function stream(
+                string $prompt,
+                ?string $sessionId = null,
+                ?string $model = null,
+                ?string $reasoningEffort = null,
+                bool $fullAuto = false,
+                ?string $cwd = null,
+                ?string $sandboxMode = null,
+                ?string $approvalPolicy = null,
+                bool $webSearch = false,
+                array $additionalDirectories = []
+            ): Generator {
+                $this->captured = [
+                    'cwd' => $cwd,
+                    'additional_directories' => $additionalDirectories,
+                ];
+
+                yield ['type' => 'process.exited', 'exit_code' => 0];
+            }
+        };
+
+        $this->app->instance(CodexCliStreamer::class, $streamer);
+
+        try {
+            $response = $this->post(route('codex.stream'), [
+                'prompt' => 'hello',
+                'workspace_root' => $workspace,
+                'cwd' => $workspace,
+                'add_dirs' => [$workspace],
+            ], [
+                'Accept' => 'text/event-stream',
+            ]);
+
+            $response->assertOk();
+            $response->streamedContent();
+
+            $this->assertSame(realpath($workspace), $streamer->captured['cwd']);
+            $this->assertSame([realpath($workspace)], $streamer->captured['additional_directories']);
+        } finally {
+            @rmdir($workspace);
+        }
     }
 
     public function test_stream_endpoint_returns_sse_output(): void

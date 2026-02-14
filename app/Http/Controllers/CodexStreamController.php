@@ -16,6 +16,7 @@ class CodexStreamController extends Controller
         /** @var array{
          * prompt: string,
          * session_id?: string|null,
+         * workspace_root?: string|null,
          * model?: string|null,
          * reasoning_effort?: string|null,
          * full_auto?: bool|null,
@@ -28,21 +29,24 @@ class CodexStreamController extends Controller
          */
         $validated = $request->validated();
 
+        $resolvedWorkspaceRoot = $this->validateWorkspaceRoot($validated['workspace_root'] ?? null);
         $resolvedCwd = $this->validateWorkspacePath(
             cwd: $validated['cwd'] ?? null,
+            workspaceRoot: $resolvedWorkspaceRoot,
             field: 'cwd',
-            defaultToConfigured: true,
+            defaultPath: $resolvedWorkspaceRoot,
             doesNotExistMessage: 'Working directory does not exist.',
-            outOfBoundsMessage: 'Working directory must be inside the configured workspace root.',
+            outOfBoundsMessage: 'Working directory must be inside the selected workspace root.',
         );
-        $resolvedAddDirs = $this->validateAdditionalDirectories($validated['add_dirs'] ?? []);
+        $resolvedAddDirs = $this->validateAdditionalDirectories($validated['add_dirs'] ?? [], $resolvedWorkspaceRoot);
 
-        return response()->eventStream(function () use ($streamer, $validated, $resolvedCwd, $resolvedAddDirs) {
+        return response()->eventStream(function () use ($streamer, $validated, $resolvedWorkspaceRoot, $resolvedCwd, $resolvedAddDirs) {
             yield new StreamedEvent(
                 event: 'meta',
                 data: [
                     'type' => 'stream.started',
                     'session_id' => $validated['session_id'] ?? null,
+                    'workspace_root' => $resolvedWorkspaceRoot,
                 ],
             );
 
@@ -88,41 +92,54 @@ class CodexStreamController extends Controller
      * @param  array<int, string>  $directories
      * @return array<int, string>
      */
-    private function validateAdditionalDirectories(array $directories): array
+    private function validateAdditionalDirectories(array $directories, string $workspaceRoot): array
     {
         $resolved = [];
 
         foreach ($directories as $index => $directory) {
             $resolved[] = $this->validateWorkspacePath(
                 cwd: $directory,
+                workspaceRoot: $workspaceRoot,
                 field: "add_dirs.$index",
-                defaultToConfigured: false,
+                defaultPath: null,
                 doesNotExistMessage: 'Additional writable directory does not exist.',
-                outOfBoundsMessage: 'Additional writable directories must be inside the configured workspace root.',
+                outOfBoundsMessage: 'Additional writable directories must be inside the selected workspace root.',
             );
         }
 
         return array_values(array_unique($resolved));
     }
 
-    private function validateWorkspacePath(
-        ?string $cwd,
-        string $field,
-        bool $defaultToConfigured,
-        string $doesNotExistMessage,
-        string $outOfBoundsMessage
-    ): string {
-        $workspaceRoot = realpath((string) config('codex.workspace_root', base_path()));
+    private function validateWorkspaceRoot(?string $workspaceRoot): string
+    {
+        $target = filled($workspaceRoot)
+            ? $workspaceRoot
+            : (string) config('codex.workspace_root', base_path());
 
-        if ($workspaceRoot === false) {
+        if (! $this->isAbsolutePath($target)) {
+            $target = base_path($target);
+        }
+
+        $resolved = realpath($target);
+
+        if ($resolved === false || ! is_dir($resolved)) {
             throw ValidationException::withMessages([
-                $field => 'Configured workspace root is invalid.',
+                'workspace_root' => 'Workspace root does not exist.',
             ]);
         }
 
-        $target = filled($cwd)
-            ? $cwd
-            : ($defaultToConfigured ? (string) config('codex.default_cwd', base_path()) : null);
+        return $resolved;
+    }
+
+    private function validateWorkspacePath(
+        ?string $cwd,
+        string $workspaceRoot,
+        string $field,
+        ?string $defaultPath,
+        string $doesNotExistMessage,
+        string $outOfBoundsMessage
+    ): string {
+        $target = filled($cwd) ? $cwd : $defaultPath;
 
         if (blank($target)) {
             throw ValidationException::withMessages([
@@ -157,6 +174,6 @@ class CodexStreamController extends Controller
     {
         return str_starts_with($path, DIRECTORY_SEPARATOR)
             || str_starts_with($path, '\\\\')
-            || preg_match('/^[a-zA-Z]:[\\\\\\/]/', $path) === 1;
+            || preg_match('/^[a-zA-Z]:[\\\\\/]/', $path) === 1;
     }
 }

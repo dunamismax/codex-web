@@ -2,9 +2,9 @@
     wire:ignore
     x-data="codexConsole({
         streamUrl: @js($streamUrl),
+        directoriesUrl: @js($directoriesUrl),
         csrfToken: @js(csrf_token()),
-        workspaceRoot: @js($workspaceRoot),
-        cwdSuggestions: @js($cwdSuggestions),
+        defaultWorkspaceRoot: @js($defaultWorkspaceRoot),
         defaultCwd: @js($defaultCwd),
         defaultModel: @js($defaultModel),
         defaultReasoningEffort: @js($defaultReasoningEffort),
@@ -79,18 +79,28 @@
                     <section class="codex-card">
                         <div class="codex-card-head">
                             <h2>Workspace</h2>
-                            <button type="button" class="codex-btn codex-btn-chip" @click="cwd = workspaceRoot" :disabled="isStreaming">
+                            <button type="button" class="codex-btn codex-btn-chip" @click="resetWorkspaceRoot()" :disabled="isStreaming || isDirectoryLoading">
                                 Root
                             </button>
                         </div>
 
-                        <label class="codex-label" for="cwd">Working directory</label>
-                        <input id="cwd" x-model="cwd" type="text" autocomplete="off" list="cwd-options">
-                        <datalist id="cwd-options">
-                            <template x-for="path in cwdSuggestions" :key="path">
-                                <option :value="path"></option>
+                        <label class="codex-label" for="workspaceRoot">Workspace location</label>
+                        <select id="workspaceRoot" :value="workspaceRoot" @change="selectWorkspaceRoot($event.target.value)" :disabled="isDirectoryLoading">
+                            <option value="__up_workspace__" :disabled="!canGoUpWorkspace()" x-text="workspaceUpLabel()"></option>
+                            <template x-for="path in workspaceOptions" :key="`workspace-${path}`">
+                                <option :value="path" x-text="workspaceOptionLabel(path)"></option>
                             </template>
-                        </datalist>
+                        </select>
+                        <p class="codex-hint" x-text="workspaceRoot"></p>
+
+                        <label class="codex-label" for="cwd">Working directory</label>
+                        <select id="cwd" :value="cwd" @change="selectWorkingDirectory($event.target.value)" :disabled="isDirectoryLoading">
+                            <option value="__up__" :disabled="!canGoUpDirectory()" x-text="upDirectoryLabel()"></option>
+                            <template x-for="path in cwdOptions()" :key="`cwd-${path}`">
+                                <option :value="path" x-text="pathOptionLabel(path)"></option>
+                            </template>
+                        </select>
+                        <p class="codex-hint" x-text="cwd"></p>
 
                         <label class="codex-label" for="addDirs">Additional writable directories</label>
                         <textarea
@@ -174,8 +184,15 @@
         function codexConsole(config) {
             return {
                 prompt: '',
-                workspaceRoot: config.workspaceRoot ?? '',
-                cwdSuggestions: config.cwdSuggestions ?? [],
+                workspaceRoot: config.defaultWorkspaceRoot ?? '',
+                defaultWorkspaceRoot: config.defaultWorkspaceRoot ?? '',
+                workspaceOptions: [],
+                workspaceParent: null,
+                systemRoot: '/',
+                homeDirectory: null,
+                cwdSuggestions: [],
+                cwdParent: null,
+                isDirectoryLoading: false,
                 modelOptions: config.modelOptions ?? [],
                 reasoningOptions: config.reasoningOptions ?? [],
                 sandboxOptions: config.sandboxOptions ?? [],
@@ -198,12 +215,17 @@
                 assistantMessageId: null,
                 hasInitialized: false,
 
-                init() {
+                async init() {
                     if (this.hasInitialized) {
                         return;
                     }
 
                     this.hasInitialized = true;
+                    await this.refreshWorkspaceBrowser(this.workspaceRoot, {
+                        setAsCurrent: true,
+                        resetCwd: true,
+                        initialCwd: config.defaultCwd ?? null,
+                    });
                     this.addMessage('system', 'System', 'Ready. Use the right-side controls to configure Codex, then send a prompt.');
                 },
 
@@ -224,6 +246,254 @@
                         .filter((line) => line !== '' && line !== this.cwd);
 
                     return [...new Set(lines)];
+                },
+
+                async fetchDirectoryListing(path) {
+                    const url = new URL(config.directoriesUrl, window.location.origin);
+                    const targetPath = String(path ?? '').trim();
+
+                    if (targetPath !== '') {
+                        url.searchParams.set('path', targetPath);
+                    }
+
+                    const response = await fetch(url.toString(), {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(await this.readErrorMessage(response));
+                    }
+
+                    const payload = await response.json().catch(() => null);
+
+                    if (!payload?.current || !Array.isArray(payload?.children)) {
+                        throw new Error('Failed to read directories.');
+                    }
+
+                    return payload;
+                },
+
+                uniquePaths(paths) {
+                    const unique = [];
+                    const seen = new Set();
+
+                    for (const path of paths) {
+                        if (typeof path !== 'string' || path.trim() === '') {
+                            continue;
+                        }
+
+                        if (!seen.has(path)) {
+                            unique.push(path);
+                            seen.add(path);
+                        }
+                    }
+
+                    return unique;
+                },
+
+                async refreshWorkspaceBrowser(path, { setAsCurrent = true, resetCwd = true, initialCwd = null } = {}) {
+                    this.isDirectoryLoading = true;
+
+                    try {
+                        const listing = await this.fetchDirectoryListing(path);
+
+                        this.systemRoot = listing.system_root ?? this.systemRoot;
+                        this.homeDirectory = listing.home ?? this.homeDirectory;
+                        this.workspaceParent = listing.parent ?? null;
+                        this.workspaceOptions = this.uniquePaths([
+                            listing.current,
+                            listing.parent,
+                            ...listing.children,
+                            listing.home,
+                            listing.system_root,
+                        ]);
+
+                        if (setAsCurrent) {
+                            this.workspaceRoot = listing.current;
+                        }
+
+                        const targetCwd = resetCwd
+                            ? (initialCwd && this.pathIsWithinWorkspace(initialCwd) ? initialCwd : this.workspaceRoot)
+                            : (this.cwd || this.workspaceRoot);
+
+                        await this.refreshCwdSuggestions(targetCwd);
+                    } catch (error) {
+                        this.addMessage('error', 'System', error?.message || 'Unable to load directories.');
+                    } finally {
+                        this.isDirectoryLoading = false;
+                    }
+                },
+
+                workspaceOptionLabel(path) {
+                    if (path === this.workspaceRoot) {
+                        return `Current workspace (${path})`;
+                    }
+
+                    if (this.homeDirectory && path === this.homeDirectory) {
+                        return `Home (${path})`;
+                    }
+
+                    if (path === this.systemRoot) {
+                        return `System root (${path})`;
+                    }
+
+                    return path;
+                },
+
+                workspaceUpLabel() {
+                    if (!this.workspaceParent) {
+                        return 'Up one level (at top)';
+                    }
+
+                    return `Up one level (${this.workspaceParent})`;
+                },
+
+                canGoUpWorkspace() {
+                    return this.workspaceParent !== null;
+                },
+
+                async selectWorkspaceRoot(value) {
+                    if (value === '__up_workspace__') {
+                        await this.goUpWorkspace();
+                        return;
+                    }
+
+                    await this.refreshWorkspaceBrowser(value, {
+                        setAsCurrent: true,
+                        resetCwd: true,
+                    });
+                },
+
+                async goUpWorkspace() {
+                    if (!this.workspaceParent) {
+                        return;
+                    }
+
+                    await this.refreshWorkspaceBrowser(this.workspaceParent, {
+                        setAsCurrent: true,
+                        resetCwd: true,
+                    });
+                },
+
+                async resetWorkspaceRoot() {
+                    await this.refreshWorkspaceBrowser(this.defaultWorkspaceRoot, {
+                        setAsCurrent: true,
+                        resetCwd: true,
+                    });
+                },
+
+                async refreshCwdSuggestions(path) {
+                    const listing = await this.fetchDirectoryListing(path || this.workspaceRoot);
+
+                    if (!this.pathIsWithinWorkspace(listing.current)) {
+                        this.cwd = this.workspaceRoot;
+                        this.cwdParent = null;
+                        this.cwdSuggestions = [this.workspaceRoot];
+
+                        return;
+                    }
+
+                    this.cwd = listing.current;
+                    this.cwdParent = listing.parent && this.pathIsWithinWorkspace(listing.parent)
+                        ? listing.parent
+                        : null;
+                    this.cwdSuggestions = this.uniquePaths([
+                        listing.current,
+                        ...listing.children.filter((child) => this.pathIsWithinWorkspace(child)),
+                    ]);
+                },
+
+                cwdOptions() {
+                    const options = [...this.cwdSuggestions];
+
+                    if (this.cwd && !options.includes(this.cwd)) {
+                        options.unshift(this.cwd);
+                    }
+
+                    return [...new Set(options)];
+                },
+
+                pathOptionLabel(path) {
+                    const normalizedRoot = this.normalizePath(this.workspaceRoot);
+                    const normalizedPath = this.normalizePath(path);
+
+                    if (normalizedPath === normalizedRoot) {
+                        return 'Workspace root';
+                    }
+
+                    if (!normalizedPath.startsWith(normalizedRoot)) {
+                        return path;
+                    }
+
+                    const suffix = normalizedPath.slice(normalizedRoot.length).replace(/^[/\\\\]/, '');
+
+                    return suffix === '' ? 'Workspace root' : suffix;
+                },
+
+                async selectWorkingDirectory(value) {
+                    if (value === '__up__') {
+                        await this.goUpDirectory();
+                        return;
+                    }
+
+                    await this.refreshCwdSuggestions(value);
+                },
+
+                upDirectoryLabel() {
+                    const parent = this.cwdParent;
+
+                    if (!parent) {
+                        return 'Up one level (at workspace root)';
+                    }
+
+                    return `Up one level (${this.pathOptionLabel(parent)})`;
+                },
+
+                canGoUpDirectory() {
+                    return this.cwdParent !== null;
+                },
+
+                async goUpDirectory() {
+                    const parent = this.cwdParent;
+
+                    if (parent) {
+                        await this.refreshCwdSuggestions(parent);
+                    }
+                },
+
+                pathIsWithinWorkspace(path) {
+                    const normalizedPath = this.normalizePath(path);
+                    const normalizedRoot = this.normalizePath(this.workspaceRoot);
+
+                    if (!normalizedPath || !normalizedRoot) {
+                        return false;
+                    }
+
+                    if (normalizedPath === normalizedRoot) {
+                        return true;
+                    }
+
+                    if (normalizedRoot === '/' || /^[a-zA-Z]:[\\\\/]$/.test(normalizedRoot)) {
+                        return normalizedPath.startsWith(normalizedRoot);
+                    }
+
+                    const separator = normalizedRoot.includes('\\') ? '\\' : '/';
+
+                    return normalizedPath.startsWith(`${normalizedRoot}${separator}`);
+                },
+
+                normalizePath(path) {
+                    const value = String(path ?? '');
+
+                    if (value === '/' || /^[a-zA-Z]:[\\\\/]$/.test(value)) {
+                        return value;
+                    }
+
+                    return value.replace(/[\\\\/]+$/, '');
                 },
 
                 async sendPrompt() {
@@ -282,6 +552,7 @@
                         body: JSON.stringify({
                             prompt,
                             session_id: this.sessionId,
+                            workspace_root: this.workspaceRoot || null,
                             model: this.model || null,
                             reasoning_effort: this.reasoningEffort || null,
                             full_auto: this.fullAuto,

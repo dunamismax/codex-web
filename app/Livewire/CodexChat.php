@@ -9,7 +9,9 @@ class CodexChat extends Component
 {
     public string $streamUrl;
 
-    public string $workspaceRoot;
+    public string $directoriesUrl;
+
+    public string $defaultWorkspaceRoot;
 
     public string $defaultCwd;
 
@@ -45,16 +47,17 @@ class CodexChat extends Component
      */
     public array $approvalPolicies = [];
 
-    /**
-     * @var array<int, string>
-     */
-    public array $cwdSuggestions = [];
-
     public function mount(): void
     {
         $this->streamUrl = route('codex.stream');
-        $this->workspaceRoot = $this->resolvePath((string) config('codex.workspace_root', base_path()));
-        $this->defaultCwd = $this->resolvePath((string) config('codex.default_cwd', $this->workspaceRoot));
+        $this->directoriesUrl = route('codex.directories');
+        $this->defaultWorkspaceRoot = $this->resolvePath((string) config('codex.workspace_root', base_path()));
+        $this->defaultCwd = $this->resolvePath((string) config('codex.default_cwd', $this->defaultWorkspaceRoot));
+
+        if (! $this->isWithinRoot($this->defaultCwd, $this->defaultWorkspaceRoot)) {
+            $this->defaultCwd = $this->defaultWorkspaceRoot;
+        }
+
         $this->defaultModel = config('codex.default_model');
         $this->defaultReasoningEffort = config('codex.default_reasoning_effort');
         $this->defaultFullAuto = (bool) config('codex.default_full_auto', false);
@@ -65,7 +68,6 @@ class CodexChat extends Component
         $this->reasoningEfforts = $this->normalizeOptions((array) config('codex.reasoning_efforts', []));
         $this->sandboxModes = $this->normalizeOptions((array) config('codex.sandbox_modes', []));
         $this->approvalPolicies = $this->normalizeOptions((array) config('codex.approval_policies', []));
-        $this->cwdSuggestions = $this->discoverWorkspaceDirectories($this->workspaceRoot);
     }
 
     public function render(): View
@@ -100,39 +102,19 @@ class CodexChat extends Component
         return realpath($path) ?: base_path();
     }
 
-    /**
-     * @return array<int, string>
-     */
-    private function discoverWorkspaceDirectories(string $workspaceRoot): array
+    private function isWithinRoot(string $path, string $root): bool
     {
-        $directories = [$workspaceRoot];
-        $entries = @scandir($workspaceRoot);
-
-        if ($entries === false) {
-            return $directories;
+        if ($path === $root) {
+            return true;
         }
 
-        foreach ($entries as $entry) {
-            if ($entry === '.' || $entry === '..') {
-                continue;
-            }
-
-            $candidate = $workspaceRoot.DIRECTORY_SEPARATOR.$entry;
-
-            if (is_dir($candidate)) {
-                $directories[] = $candidate;
-            }
-        }
-
-        sort($directories);
-
-        return array_slice($directories, 0, 75);
+        return str_starts_with($path, $root.DIRECTORY_SEPARATOR);
     }
 
     private function isAbsolutePath(string $path): bool
     {
         return str_starts_with($path, DIRECTORY_SEPARATOR)
             || str_starts_with($path, '\\\\')
-            || preg_match('/^[a-zA-Z]:[\\\\\\/]/', $path) === 1;
+            || preg_match('/^[a-zA-Z]:[\\\\\/]/', $path) === 1;
     }
 }
