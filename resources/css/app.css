@@ -385,6 +385,14 @@ body {
     font-family: var(--font-mono);
 }
 
+.codex-log-stream {
+    margin: 0;
+    white-space: pre-wrap;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    font-family: var(--font-mono);
+}
+
 @keyframes auroraFloat {
     from {
         transform: translate3d(0, 0, 0) scale(1);

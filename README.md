@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  A Laravel + Livewire + Alpine + Flux UI web console for streaming Codex CLI runs from your browser.
+  A Laravel + Livewire + Flux UI web console for streaming Codex CLI runs from your browser.
 </p>
 
 # Codex Web
@@ -12,7 +12,7 @@ Codex Web is a browser UI for Codex CLI workflows. It streams Codex responses in
 
 ## Highlights
 
-- Real-time streaming chat UI at `/` backed by `POST /codex/stream` SSE.
+- Real-time streaming chat UI at `/` driven by Livewire actions + `wire:stream`.
 - Session continuation using Codex thread IDs (`exec` + `exec resume`).
 - Flux UI integration for shared, accessible UI primitives in the chat console.
 - Configurable runtime controls in the UI:
@@ -31,7 +31,6 @@ Codex Web is a browser UI for Codex CLI workflows. It streams Codex responses in
 ## Frontend Stack
 
 - Laravel + Livewire (server-driven application and component rendering)
-- Alpine.js (lightweight client-side interactions inside Livewire views)
 - Flux UI (official Livewire component library; free tier components in use)
 - Tailwind CSS v4 (styling foundation, including Flux styles)
 
@@ -143,6 +142,7 @@ npm run build
 ## Security Notes
 
 - Stream requests are validated by `app/Http/Requests/CodexStreamRequest.php`.
+- The Livewire chat action enforces equivalent runtime/path validation before invoking Codex.
 - `workspace_root` is validated as an existing directory.
 - `cwd` and `add_dirs` are resolved and constrained to the selected `workspace_root`.
 - Stream failures are converted into structured SSE error events.
@@ -166,6 +166,7 @@ codex-web/
 │   ├── css/app.css
 │   └── js/app.js
 ├── routes/web.php
+├── tests/Feature/CodexChatLivewireTest.php
 ├── tests/Feature/ExampleTest.php
 ├── composer.json
 └── package.json
