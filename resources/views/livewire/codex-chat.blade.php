@@ -62,15 +62,15 @@
                             placeholder="Describe the change you want Codex to make..."
                         ></textarea>
                         <div class="codex-actions">
-                            <button type="submit" class="codex-btn codex-btn-primary" :disabled="isStreaming || !prompt.trim()">
+                            <flux:button type="submit" variant="primary" x-bind:disabled="isStreaming || !prompt.trim()">
                                 Send
-                            </button>
-                            <button type="button" class="codex-btn codex-btn-quiet" @click="stopStream()" :disabled="!isStreaming">
+                            </flux:button>
+                            <flux:button type="button" variant="ghost" x-on:click="stopStream()" x-bind:disabled="!isStreaming">
                                 Stop
-                            </button>
-                            <button type="button" class="codex-btn codex-btn-quiet" @click="resetSession()" :disabled="isStreaming">
+                            </flux:button>
+                            <flux:button type="button" variant="ghost" x-on:click="resetSession()" x-bind:disabled="isStreaming">
                                 New Session
-                            </button>
+                            </flux:button>
                         </div>
                     </form>
                 </section>
@@ -79,9 +79,9 @@
                     <section class="codex-card">
                         <div class="codex-card-head">
                             <h2>Workspace</h2>
-                            <button type="button" class="codex-btn codex-btn-chip" @click="resetWorkspaceRoot()" :disabled="isStreaming || isDirectoryLoading">
+                            <flux:button type="button" size="sm" variant="filled" x-on:click="resetWorkspaceRoot()" x-bind:disabled="isStreaming || isDirectoryLoading">
                                 Root
-                            </button>
+                            </flux:button>
                         </div>
 
                         <label class="codex-label" for="workspaceRoot">Workspace location</label>

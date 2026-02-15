@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  A Laravel + Livewire web console for streaming Codex CLI runs from your browser.
+  A Laravel + Livewire + Alpine + Flux UI web console for streaming Codex CLI runs from your browser.
 </p>
 
 # Codex Web
@@ -14,6 +14,7 @@ Codex Web is a browser UI for Codex CLI workflows. It streams Codex responses in
 
 - Real-time streaming chat UI at `/` backed by `POST /codex/stream` SSE.
 - Session continuation using Codex thread IDs (`exec` + `exec resume`).
+- Flux UI integration for shared, accessible UI primitives in the chat console.
 - Configurable runtime controls in the UI:
   - Workspace location (can be moved anywhere on the system)
   - Working directory
@@ -26,6 +27,13 @@ Codex Web is a browser UI for Codex CLI workflows. It streams Codex responses in
   - Live web search
 - Server-side path safety: `cwd` / `add_dirs` must resolve inside the selected `workspace_root`.
 - Responsive viewport behavior with internal panel scrolling on large screens.
+
+## Frontend Stack
+
+- Laravel + Livewire (server-driven application and component rendering)
+- Alpine.js (lightweight client-side interactions inside Livewire views)
+- Flux UI (official Livewire component library; free tier components in use)
+- Tailwind CSS v4 (styling foundation, including Flux styles)
 
 ## Runtime Option Support (Current)
 
