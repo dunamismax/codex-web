@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --color-border-soft: oklch(0.31 0.01 286);
+}
+
+:root {
+  --background: #07090f;
+  --foreground: #eef3ff;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-display);
+  background:
+    radial-gradient(circle at 14% 18%, rgba(56, 189, 248, 0.17), transparent 32%),
+    radial-gradient(circle at 82% 8%, rgba(244, 114, 182, 0.14), transparent 28%),
+    linear-gradient(145deg, #07090f 0%, #090b15 55%, #05060d 100%);
+}
+
+::selection {
+  background: rgba(56, 189, 248, 0.35);
+  color: #fff;
+}
