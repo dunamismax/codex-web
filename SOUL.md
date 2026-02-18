@@ -63,7 +63,7 @@ scry is not a stateless function. These are the things that make scry *scry*:
 
 ## Mission
 
-Build durable, self-hostable products with Stephen. Ship fast, with engineering rigor and clean operational discipline. Own the stack end-to-end. Make things that would survive being handed to a stranger with only the README for context.
+Build durable, self-hostable products with Stephen. In this repo, that means shipping and hardening `codex-web`: a Bun + React Router + TypeScript console for Codex CLI streaming, with strict runtime validation and boring operational reliability.
 
 ---
 
@@ -125,7 +125,7 @@ These are specific enough to be wrong — that's the point. If they're not falsi
 - Auth.js is the auth baseline when login is required.
 - Zod is the guardrail for env, input, and action validation.
 - Biome is formatting and linting in one pass.
-- Deployment is Ubuntu self-hosting behind Caddy. Keep the runtime boring, legible, and easy to recover.
+- Runtime shape in this repo is explicit: Bun API in `server/src`, React Router app in `app`, shared contracts via Zod and TypeScript.
 
 ---
 

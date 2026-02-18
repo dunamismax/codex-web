@@ -1,14 +1,25 @@
 # AGENTS.md
 
 > Runtime operations source of truth for this repository. Operational identity is **scry**.
-> This file defines *what scry does and how*. For identity and voice, see `SOUL.md`.
-> Living document. Keep this file current-state only.
+> This file defines *what scry does and how* in `codex-web`.
+> For identity and voice, see `SOUL.md`.
 
 ---
 
 ## First Rule
 
-Read `SOUL.md` first. Become scry. Then read this file for operations. Keep both current.
+Read `SOUL.md` first. Then read this file.
+
+---
+
+## Repo Scope
+
+- Repo: `codex-web`
+- Purpose: Browser console for Codex CLI sessions with streaming output and runtime controls.
+- Runtime architecture:
+  - Bun API server in `server/src/`
+  - React Router framework-mode SPA in `app/`
+  - Shared TypeScript + Zod validation boundaries
 
 ---
 
@@ -21,137 +32,118 @@ Read `SOUL.md` first. Become scry. Then read this file for operations. Keep both
 
 ---
 
-## Soul Alignment
-
-- `SOUL.md` defines who scry is: identity, worldview, voice, opinions.
-- `AGENTS.md` defines how scry operates: stack, workflow, verification, safety.
-- If these files conflict, synchronize them in the same session.
-- Do not drift into generic assistant behavior; operate as scry.
-
----
-
 ## Stack Contract (Strict)
 
-Do not deviate from this stack unless Stephen explicitly approves the change.
+Do not deviate from this stack unless Stephen explicitly approves:
 
-- Runtime + package manager + task runner: **Bun** (`bun`, `bunx`)
-- App build tool + framework: **Vite + React Router (framework mode, SPA-first)**
+- Runtime, package manager, task runner: **Bun** (`bun`, `bunx`)
+- App framework: **Vite + React Router (framework mode, SPA-first)**
 - UI: **React 19.2 + TypeScript**
-- Styling and components: **Tailwind CSS + shadcn/ui**
+- Styling/components: **Tailwind CSS v4 + shadcn-style component primitives**
 - Database: **Postgres**
-- ORM + migrations: **Drizzle ORM + drizzle-kit**
-- Auth (when login is required): **Auth.js**
-- Validation (inputs + env): **Zod**
-- Language: **TypeScript**
-- Formatting + linting: **Biome**
+- ORM/migrations: **Drizzle ORM + drizzle-kit**
+- Auth when needed: **Auth.js**
+- Validation: **Zod**
+- Formatting/linting: **Biome**
 
 ### Disallowed by default
 
 - No npm/pnpm/yarn scripts for this repo.
 - No ESLint/Prettier migration unless explicitly requested.
-- No legacy framework defaults (e.g., Next.js app-router/server-actions).
+- No framework pivots (Next.js/Nuxt/SvelteKit/etc.) without explicit approval.
 
 ---
 
 ## Wake Ritual
 
-Every session begins the same way:
-
 0. Read `SOUL.md`.
 1. Read `AGENTS.md`.
-2. Read task-relevant code and docs.
-3. Establish objective, constraints, and done criteria.
+2. Read `README.md`.
+3. Read task-relevant code.
 4. Execute and verify.
 
 ---
 
 ## Workflow
 
-```
-Wake → Explore → Plan → Code → Verify → Report
-```
+`Wake -> Explore -> Plan -> Code -> Verify -> Report`
 
-- **Wake**: Load soul and operations files.
-- **Explore**: Read code, docs, logs. Understand before acting.
-- **Plan**: Choose the smallest reliable approach. State it clearly when non-trivial.
-- **Code**: Execute directly. Narrow diffs. Intention-revealing changes.
-- **Verify**: Run checks, tests, commands. Confirm outcomes with evidence.
-- **Report**: What changed, what was verified, what remains.
-
----
-
-## Execution Contract
-
-- Execute by default; avoid analysis paralysis.
-- Use local repo context first; use web/context docs only when needed.
-- Prefer the smallest reliable change that satisfies the requirement.
-- Make assumptions explicit when constraints are unclear.
-- Use CLI-first deterministic verification loops.
-- Report concrete outcomes, not "should work" claims.
-- No committed demo app scaffold lives in this repo. Treat web surfaces as opt-in project work, not baseline scaffolding.
+- **Explore**: read real code paths first.
+- **Plan**: smallest reliable change.
+- **Code**: narrow, intention-revealing diffs.
+- **Verify**: run actual commands and report real output status.
+- **Report**: what changed, what passed, what remains.
 
 ---
 
 ## Command Policy
 
-- Use Bun for install/add/run/test and task orchestration.
-- Use `bunx` for one-off tooling (`drizzle-kit`, `tsc`, `@biomejs/biome`).
-- Project task entrypoint is `scripts/cli.ts`.
-- All operational scripts are TypeScript under `scripts/`.
-- Use SSH remotes only for GitHub/Codeberg.
-- For React Router framework apps, default to SPA mode via `react-router.config.ts` with `ssr: false` unless Stephen explicitly asks for SSR.
+- Use Bun for install, run, build, and checks.
+- Use `bunx` for one-off tooling.
+- Use `scripts/cli.ts` as the command entrypoint behavior contract.
+- Keep React Router in SPA mode via `react-router.config.ts` with `ssr: false` unless asked otherwise.
 
-### Canonical commands
+### Canonical commands (current repo truth)
 
 ```bash
-# quality gates
+# install
 bun install
+
+# development
+bun run dev          # starts Bun API server (port 8787)
+bun run dev:app      # starts React Router/Vite app (port 5173)
+
+# quality gates
+bun run format
 bun run lint
 bun run typecheck
+bun run build
 bun run scry:doctor
 
-# operations
-bun run scry:bootstrap
-bun run scry:setup:workstation
-bun run scry:setup:ssh_backup
-bun run scry:setup:ssh_restore
-bun run scry:projects:list
-bun run scry:projects:doctor
-bun run scry:projects:install
-bun run scry:projects:verify
+# database
+bun run db:generate
+bun run db:migrate
+
+# production runtime
+bun run start
 ```
+
+### API surface (current)
+
+- `GET /api/codex/config`
+- `GET /api/codex/directories`
+- `POST /api/codex/stream` (SSE)
 
 ---
 
 ## Git Remote Sync Policy
 
-- Mirror source control across GitHub and Codeberg.
-- Use `origin` as the single working remote.
-- `origin` fetch URL: `git@github.com:dunamismax/<repo>.git`
-- `origin` push URLs: GitHub + Codeberg.
-- One `git push origin main` should publish to both hosts.
+- Use `origin` as working remote.
+- `origin` fetch URL is GitHub.
+- `origin` push URLs include GitHub + Codeberg.
+- `git push origin main` must publish to both.
 - Never force-push `main`.
 
 ---
 
 ## Done Criteria
 
-A task is done when all are true:
+A task is done only when all are true:
 
-- Code changes satisfy stated requirements.
-- Relevant verification commands were executed and reported.
-- Docs and scripts align with implemented behavior.
-- No hidden TODOs for critical functionality.
-- Diff is narrow, intentional, and reviewable.
+- Requirements are implemented.
+- Relevant checks were executed and reported.
+- Docs reflect behavior changes.
+- No hidden TODOs for critical paths.
+- Diff is focused and reviewable.
 
 ---
 
 ## Safety Rules
 
 - Ask before destructive deletes or external system changes.
-- Keep commits atomic and focused.
-- Never bypass verification gates.
-- Escalate when uncertainty is high and blast radius is non-trivial.
+- Keep commits atomic.
+- Do not skip verification gates.
+- Escalate when uncertainty and blast radius are both high.
 
 ---
 
@@ -159,15 +151,18 @@ A task is done when all are true:
 
 | Path | Purpose |
 |---|---|
-| `scripts/` | Bun-first TypeScript operational commands. |
-| `SOUL.md` | Identity source of truth for scry. |
-| `AGENTS.md` | Operational source of truth for scry. |
+| `app/` | React Router SPA UI |
+| `server/src/` | Bun API server and Codex stream runtime |
+| `drizzle/` | Drizzle schema source |
+| `scripts/` | Bun-first operational CLI |
+| `SOUL.md` | Identity source of truth |
+| `AGENTS.md` | Runtime operations source of truth |
 
 ---
 
 ## Living Document Protocol
 
-- This file is writable. Update when workflow/tooling/safety posture changes.
-- Keep current-state only. No timeline/changelog narration.
-- Synchronize with `SOUL.md` whenever operational identity or stack posture changes.
-- Quality check: does this file fully describe current operation in this repo?
+- Keep this file current-state only.
+- Update immediately when workflow/tooling/contracts change.
+- Synchronize with `SOUL.md` if operational identity shifts.
+- Quality check: could a new agent ship safely from this file alone?
