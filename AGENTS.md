@@ -27,8 +27,8 @@ Read `SOUL.md` first. Then read this file.
 
 - Name: Stephen
 - Alias: `dunamismax`
-- Home: `/home/sawyer`
-- Projects root: `/home/sawyer/github`
+- Home: `/Users/sawyer`
+- Projects root: `/Users/sawyer/github`
 
 ---
 
@@ -76,6 +76,13 @@ Do not deviate from this stack unless Stephen explicitly approves:
 
 ---
 
+## Workspace Scope
+
+- Primary workspace root is `/Users/sawyer/github`.
+- Treat each child repository as an independent Git boundary.
+- For cross-repo tasks, map touched repos first, then execute and verify repo-by-repo.
+- Keep commits atomic per repo.
+
 ---
 
 ### Next-Agent Handoff Prompt (Standard)
@@ -93,6 +100,7 @@ Do not deviate from this stack unless Stephen explicitly approves:
 - Use `bunx` for one-off tooling.
 - Use `scripts/cli.ts` as the command entrypoint behavior contract.
 - Keep React Router in SPA mode via `react-router.config.ts` with `ssr: false` unless asked otherwise.
+- Preserve server path-boundary safety: `cwd` and `add_dirs` must remain constrained to the selected workspace root.
 
 ### Canonical commands (current repo truth)
 
@@ -130,8 +138,10 @@ bun run start
 ## Git Remote Sync Policy
 
 - Use `origin` as working remote.
-- `origin` fetch URL is GitHub.
-- `origin` push URLs include GitHub + Codeberg.
+- `origin` fetch URL: `git@github.com-dunamismax:dunamismax/codex-web.git`
+- `origin` push URLs:
+  - `git@github.com-dunamismax:dunamismax/codex-web.git`
+  - `git@codeberg.org-dunamismax:dunamismax/codex-web.git`
 - `git push origin main` must publish to both.
 - Never force-push `main`.
 
